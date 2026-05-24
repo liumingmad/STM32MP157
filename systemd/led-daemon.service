@@ -1,0 +1,13 @@
+[Unit]
+Description=LED control HTTP daemon for QML UI (wraps /usr/local/bin/led)
+After=network.target
+
+[Service]
+Type=simple
+Environment=LED_BIN=/usr/local/bin/led
+ExecStart=/usr/bin/python3 /usr/local/bin/led-daemon.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -11,7 +11,7 @@ REMOTE      := $(REMOTE_HOST):$(REMOTE_DIR)
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 BINS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%,$(SRCS))
 
-.PHONY: all clean upload run refresh-ip deploy-wifi vnc-demo vnc-stop vnc-open
+.PHONY: all clean upload run refresh-ip deploy-wifi vnc-demo vnc-stop vnc-open deploy-led led-status led-stop
 
 all: $(BINS)
 
@@ -89,3 +89,32 @@ vnc-stop:
 
 vnc-open:
 	@open vnc://$(VNC_HOST):5900
+
+# --- LED HTTP daemon: lets the QML UI drive /sys/class/leds/user-led ---
+# Usage:
+#   make deploy-led    # cross-build led, install binary + daemon + service, start
+#   make led-status    # systemctl status + current sysfs state via the daemon
+#   make led-stop      # disable + stop the service
+deploy-led: $(BUILD_DIR)/led
+	scp $(BUILD_DIR)/led            $(REMOTE_HOST):/tmp/led
+	scp scripts/led-daemon.py       $(REMOTE_HOST):/tmp/led-daemon.py
+	scp systemd/led-daemon.service  $(REMOTE_HOST):/tmp/led-daemon.service
+	ssh $(REMOTE_HOST) ' \
+	  install -d /usr/local/bin && \
+	  install -m 0755 /tmp/led                /usr/local/bin/led && \
+	  install -m 0755 /tmp/led-daemon.py      /usr/local/bin/led-daemon.py && \
+	  install -m 0644 /tmp/led-daemon.service /etc/systemd/system/led-daemon.service && \
+	  rm /tmp/led /tmp/led-daemon.py /tmp/led-daemon.service && \
+	  systemctl daemon-reload && \
+	  systemctl enable --now led-daemon.service && \
+	  systemctl restart led-daemon.service && \
+	  systemctl is-active led-daemon.service'
+
+led-status:
+	@ssh $(REMOTE_HOST) ' \
+	  systemctl status led-daemon.service --no-pager -l | head -20; \
+	  echo "--- GET /led ---"; \
+	  curl -sS http://127.0.0.1:8081/led | python3 -m json.tool'
+
+led-stop:
+	ssh $(REMOTE_HOST) 'systemctl disable --now led-daemon.service; echo stopped'
