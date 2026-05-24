@@ -1,0 +1,14 @@
+[Unit]
+Description=Alientek SDIO WiFi auto-connect
+After=systemd-modules-load.service
+Before=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/default/wifi-autoconnect
+ExecStart=/home/root/shell/wifi/alientek_sdio_wifi_setup.sh -m station -i ${WIFI_SSID} -p ${WIFI_PASS} -d ${WIFI_IFACE}
+
+[Install]
+WantedBy=multi-user.target
