@@ -1,6 +1,17 @@
 # Build artifacts
 build/
 
+# Kernel/module build artifacts
+kmod/kernel-src/
+kmod/**/*.cmd
+kmod/**/*.ko
+kmod/**/*.mod
+kmod/**/*.mod.c
+kmod/**/*.o
+kmod/**/.tmp_versions/
+kmod/**/Module.symvers
+kmod/**/modules.order
+
 # Local secrets (WiFi creds etc.) — keep .example committed
 *.env
 !*.env.example

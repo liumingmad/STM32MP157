@@ -11,7 +11,7 @@ REMOTE      := $(REMOTE_HOST):$(REMOTE_DIR)
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 BINS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%,$(SRCS))
 
-.PHONY: all clean upload run refresh-ip deploy-wifi vnc-demo vnc-stop vnc-open deploy-led led-status led-stop
+.PHONY: all clean upload run refresh-ip deploy-wifi vnc-demo vnc-stop vnc-open deploy-led led-status led-stop driver-image driver-prepare-stable driver-build driver-clean driver-shell
 
 all: $(BINS)
 
@@ -118,3 +118,19 @@ led-status:
 
 led-stop:
 	ssh $(REMOTE_HOST) 'systemctl disable --now led-daemon.service; echo stopped'
+
+# --- STM32MP157 out-of-tree driver development via OrbStack/Docker ---
+driver-image:
+	scripts/driver-dev.sh build-image
+
+driver-prepare-stable:
+	scripts/driver-dev.sh prepare-stable
+
+driver-build:
+	scripts/driver-dev.sh build
+
+driver-clean:
+	scripts/driver-dev.sh clean
+
+driver-shell:
+	scripts/driver-dev.sh shell
