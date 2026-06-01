@@ -88,6 +88,11 @@ def send(fd: int, line: str) -> None:
     os.write(fd, (line + "\r").encode())
 
 
+def marker_line(marker: str) -> bytes:
+    """Match a marker printed as its own line, not inside an echoed command."""
+    return b"\r\n" + marker.encode() + b"\r\n"
+
+
 def drain_until_quiet(fd: int, quiet_secs: float = 0.5,
                       max_total: float = 4.0) -> None:
     """Read & discard until the line has been silent for `quiet_secs`."""
@@ -119,19 +124,19 @@ def query_ip_via_serial() -> str | None:
         #    echoed back, so we know the shell is at a prompt and listening.
         ready = "__READY_%d__" % os.getpid()
         send(fd, f"echo {ready}")
-        sync = read_for(fd, 3.0, until=ready.encode() + b"\r\n")
+        sync = read_for(fd, 3.0, until=marker_line(ready))
 
         # Handle login: prompt (rare — usually already root).
         if SERIAL_LOGIN_USER and b"login:" in sync.lower():
             send(fd, SERIAL_LOGIN_USER)
             drain_until_quiet(fd, quiet_secs=0.6, max_total=3.0)
             send(fd, f"echo {ready}")
-            read_for(fd, 3.0, until=ready.encode() + b"\r\n")
+            read_for(fd, 3.0, until=marker_line(ready))
 
         # 3) Real query, terminated by another sentinel.
         done = "__IP_DONE_%d__" % os.getpid()
         send(fd, f"/sbin/ip -4 addr show wlan0; echo {done}")
-        out = read_for(fd, 6.0, echo=True, until=done.encode() + b"\r\n")
+        out = read_for(fd, 6.0, echo=True, until=marker_line(done))
     finally:
         os.close(fd)
 
