@@ -11,7 +11,7 @@ REMOTE      := $(REMOTE_HOST):$(REMOTE_DIR)
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 BINS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%,$(SRCS))
 
-.PHONY: all clean upload run refresh-ip deploy-wifi vnc-demo vnc-stop vnc-open deploy-led led-status led-stop driver-image driver-prepare-stable driver-build driver-clean driver-shell
+.PHONY: all clean upload run refresh-ip deploy-wifi vnc-demo vnc-stop vnc-open deploy-led led-status led-stop driver-image driver-prepare-stable driver-prepare-archive driver-build driver-clean driver-shell
 
 all: $(BINS)
 
@@ -125,6 +125,9 @@ driver-image:
 
 driver-prepare-stable:
 	scripts/driver-dev.sh prepare-stable
+
+driver-prepare-archive:
+	scripts/driver-dev.sh prepare-archive
 
 driver-build:
 	scripts/driver-dev.sh build

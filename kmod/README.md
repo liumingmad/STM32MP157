@@ -24,6 +24,14 @@ the Docker volume `stm32mp157-kernel-5.4.31`, copies
 tree intentionally lives in a Docker volume because the Linux source tree has
 case-sensitive paths that are unsafe on the default macOS filesystem.
 
+If you have the Alientek source package, import that exact archive instead:
+
+```sh
+ARCHIVE=/path/to/linux-5.4.31-g886e225be-v1.9.tar.bz2 \
+scripts/driver-dev.sh prepare-archive
+scripts/driver-dev.sh build
+```
+
 For production driver work, prefer the exact Alientek kernel source tree and
 matching `Module.symvers` from the image that produced the board kernel. The
 board has `CONFIG_MODVERSIONS=y`; without the exact symbol versions, a module

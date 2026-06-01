@@ -18,6 +18,7 @@ usage: $0 <command>
 commands:
   build-image       Build the OrbStack/Docker development image
   prepare-stable    Download linux-$KERNEL_VERSION from kernel.org and prepare headers
+  prepare-archive   Extract ARCHIVE=/path/to/linux.tar.* and prepare headers
   build             Build kmod/chrdev_demo/chrdev_demo.ko
   clean             Clean chrdev_demo module build outputs
   shell             Open an interactive shell in the development container
@@ -29,6 +30,7 @@ environment:
   KERNEL_VOLUME            Docker volume for kernel tree (default: $KERNEL_VOLUME)
   KDIR_HOST                Optional exact host kernel tree path
   KDIR_CONTAINER           Container kernel tree path (default: $KDIR_CONTAINER)
+  ARCHIVE                  Kernel source archive for prepare-archive
   JOBS                     Parallel make jobs (default: $JOBS)
 EOF
 }
@@ -101,6 +103,51 @@ prepare_stable() {
     '
 }
 
+prepare_archive() {
+    archive="${ARCHIVE:-}"
+    if [ -z "$archive" ]; then
+        echo "missing ARCHIVE=/path/to/linux.tar.*" >&2
+        exit 2
+    fi
+    if [ ! -f "$archive" ]; then
+        echo "archive not found: $archive" >&2
+        exit 1
+    fi
+
+    local archive_dir archive_base
+    archive_dir="$(cd "$(dirname "$archive")" && pwd)"
+    archive_base="$(basename "$archive")"
+
+    docker run --rm \
+        --platform linux/arm64 \
+        -e "KERNEL_VERSION=$KERNEL_VERSION" \
+        -e "LOCALVERSION=$LOCALVERSION" \
+        -e "KDIR_CONTAINER=$KDIR_CONTAINER" \
+        -e "JOBS=$JOBS" \
+        -e "ARCHIVE=/archive/$archive_base" \
+        -v "$KERNEL_VOLUME:/kernel-src" \
+        -v "$archive_dir:/archive:ro" \
+        -v "$ROOT:/work" \
+        -w /work \
+        "$IMAGE" bash -lc '
+            set -euo pipefail
+            rm -rf "$KDIR_CONTAINER"
+            mkdir -p "$KDIR_CONTAINER"
+            tar -C "$KDIR_CONTAINER" --strip-components=0 -xf "$ARCHIVE"
+
+            cp /work/kmod/kernel-info/config "$KDIR_CONTAINER/.config"
+            make -C "$KDIR_CONTAINER" \
+                ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- LOCALVERSION="$LOCALVERSION" \
+                olddefconfig
+            make -C "$KDIR_CONTAINER" \
+                ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- LOCALVERSION="$LOCALVERSION" \
+                prepare modules_prepare scripts -j "$JOBS"
+            make -C "$KDIR_CONTAINER" \
+                ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- LOCALVERSION="$LOCALVERSION" \
+                kernelrelease
+        '
+}
+
 build_module() {
     docker_run bash -lc '
         set -euo pipefail
@@ -139,6 +186,7 @@ cmd="${1:-}"
 case "$cmd" in
     build-image) build_image ;;
     prepare-stable) prepare_stable ;;
+    prepare-archive) prepare_archive ;;
     build) build_module ;;
     clean) clean_module ;;
     shell) docker_shell ;;
